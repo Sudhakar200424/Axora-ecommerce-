@@ -13,7 +13,8 @@ service cloud.firestore {
 
     // User profile access
     match /users/{userId} {
-      allow read: if request.auth != null || isAdmin();
+      // Allow public read so the 'Forgot Password' check can verify if an email exists
+      allow read: if true;
       allow write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
       allow delete: if isAdmin();
     }

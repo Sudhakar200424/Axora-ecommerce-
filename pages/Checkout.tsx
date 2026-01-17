@@ -107,7 +107,7 @@ const Checkout: React.FC = () => {
           {/* Main Content */}
           <div className="lg:col-span-7">
             {step === 1 && (
-              <div className="bg-white dark:bg-clay p-12 shadow-sm animate-fadeIn">
+              <div className="bg-white dark:bg-clay p-6 md:p-12 shadow-sm animate-fadeIn">
                 <h2 className="text-xl font-serif uppercase tracking-widest mb-10 dark:text-offwhite">Shipping Details</h2>
                 <div className="grid grid-cols-2 gap-8">
                   <div className="col-span-1 border-b border-neutral-200 dark:border-neutral-700 pb-2">
@@ -161,7 +161,7 @@ const Checkout: React.FC = () => {
             )}
 
             {step === 2 && (
-              <div className="bg-white dark:bg-clay p-12 shadow-sm animate-fadeIn">
+              <div className="bg-white dark:bg-clay p-6 md:p-12 shadow-sm animate-fadeIn">
                 <h2 className="text-xl font-serif uppercase tracking-widest mb-10 dark:text-offwhite">Payment Method</h2>
                 <div className="space-y-6">
                   {['Credit/Debit Card', 'Net Banking', 'UPI', 'Cash on Delivery'].map((method) => {
@@ -228,9 +228,9 @@ const Checkout: React.FC = () => {
                     <div className="space-y-4 animate-fadeIn">
                       <div>
                         <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">UPI ID</label>
-                        <div className="flex">
-                          <input type="text" placeholder="username@upi" className="flex-grow bg-white dark:bg-charcoal border border-neutral-200 dark:border-neutral-700 p-3 text-xs focus:outline-none focus:border-gold dark:text-offwhite" />
-                          <button className="bg-neutral-200 dark:bg-neutral-700 text-charcoal dark:text-offwhite px-4 text-[10px] font-bold uppercase tracking-widest hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors">Verify</button>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input type="text" placeholder="username@upi" className="flex-grow bg-white dark:bg-charcoal border border-neutral-200 dark:border-neutral-700 p-3 text-xs focus:outline-none focus:border-gold dark:text-offwhite w-full sm:w-auto" />
+                          <button className="bg-neutral-200 dark:bg-neutral-700 text-charcoal dark:text-offwhite px-4 py-3 sm:py-0 text-[10px] font-bold uppercase tracking-widest hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-colors whitespace-nowrap">Verify</button>
                         </div>
                         <p className="text-[9px] text-neutral-400 mt-2">Google Pay, PhonePe, Paytm, BHIM</p>
                       </div>
@@ -267,7 +267,7 @@ const Checkout: React.FC = () => {
             )}
 
             {step === 3 && (
-              <div className="bg-white dark:bg-clay p-16 shadow-sm text-center animate-fadeIn">
+              <div className="bg-white dark:bg-clay p-6 md:p-16 shadow-sm text-center animate-fadeIn">
                 <div className="w-16 h-16 bg-gold rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-charcoal" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

@@ -59,6 +59,7 @@ const Auth: React.FC = () => {
 
   // Signup State
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [tempVerifiedUser, setTempVerifiedUser] = useState<any>(null);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,8 +152,43 @@ const Auth: React.FC = () => {
 
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
-        // FORCE RELOAD to ensure ShopContext re-initializes and fetches the latest role
+        try {
+          await signInWithEmailAndPassword(auth, email, password);
+        } catch (firebaseErr: any) {
+          console.warn("Firebase Auth failed, trying Custom Fallback...", firebaseErr.code);
+
+          // FALLBACK LOGIC: If standard auth fails, check Firestore for custom password
+          if (firebaseErr.code === 'auth/invalid-credential' || firebaseErr.code === 'auth/wrong-password' || firebaseErr.code === 'auth/user-not-found') {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("email", "==", email.trim().toLowerCase()));
+            const snap = await getDocs(q);
+
+            if (!snap.empty) {
+              const userData = snap.docs[0].data() as any;
+              // Check if the custom password field exists and matches
+              if (userData.password === password) {
+                console.log("Custom Fallback Success: Password matched in Firestore profile.");
+                const customUser = {
+                  uid: snap.docs[0].id,
+                  email: userData.email,
+                  name: userData.name || 'Member',
+                  role: userData.role || role || 'buyer',
+                  orderHistory: userData.orderHistory || []
+                };
+                // Save to local storage (same as OTP flow)
+                localStorage.setItem('axora_otp_user', JSON.stringify(customUser));
+                setMessage("Login Successful via Secure Profile. Redirecting...");
+                setTimeout(() => window.location.reload(), 1000);
+                return;
+              }
+            }
+          }
+          // If fallback also fails, re-throw the original error
+          throw firebaseErr;
+        }
+
+        // Standard Login Success
+        setMessage("Login Successful! Redirecting...");
         setTimeout(() => {
           window.location.reload();
         }, 500);
@@ -185,7 +221,8 @@ const Auth: React.FC = () => {
       } else {
         setError("Authentication failed. Please try again.");
       }
-    } finally {
+    }
+    finally {
       setLoading(false);
     }
   };
@@ -340,12 +377,10 @@ const Auth: React.FC = () => {
     setLoading(true);
     // Simple string comparison
     if (enteredOtp === generatedOtp) {
-      setMessage('Verified successfully! redirecting...');
+      setMessage('Verified successfully! You can now update your password or skip.');
 
       try {
-        // Implement "Login via OTP" flow (Simulated Auth for this session).
         const usersRef = collection(db, "users");
-        // EFFICIENT QUERY: Only check the specific email
         const q = query(usersRef, where("email", "==", resetEmail));
         const userSnap = await getDocs(q);
 
@@ -353,33 +388,26 @@ const Auth: React.FC = () => {
         let uid = 'otp_' + Date.now();
 
         if (!userSnap.empty) {
-          // Found exact match
           userData = userSnap.docs[0].data() as any;
           uid = userSnap.docs[0].id;
-        } else {
-          // If not found, create a temporary session or handle as new user
-          // We do NOT scan the whole DB anymore.
         }
 
         const fakeAuthUser = {
           uid: uid,
           email: resetEmail,
-          name: userData.name || 'User', // Fix: match 'User' interface
+          name: userData.name || 'User',
           role: userData.role || role || 'buyer',
-          orderHistory: [] // Fix: match 'User' interface
+          orderHistory: []
         };
 
-        // Save to local storage to persist "OTP Session"
-        localStorage.setItem('axora_otp_user', JSON.stringify(fakeAuthUser));
-
-        // RESET & REDIRECT: Use window.location.reload() or let useEffect handle it
-        setTimeout(() => {
-          window.location.reload();
-        }, 800);
+        // Store temp user and move to update password screen
+        setTempVerifiedUser(fakeAuthUser);
+        setMode('update_password');
+        setLoading(false);
 
       } catch (e) {
         console.error(e);
-        setError('Login failed during session creation.');
+        setError('Verification success, but session preparation failed.');
         setLoading(false);
       }
     } else {
@@ -389,11 +417,54 @@ const Auth: React.FC = () => {
   };
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
-    // If we are here, we are assuming we might be logged in or just skipping.
-    // Since we likely aren't logged in (OTP flow), this step is mostly cosmetic unless we have a custom token.
     e.preventDefault();
-    setMessage("Password updated (Simulation). Redirecting...");
-    setTimeout(() => navigate('/catalog'), 1000);
+    if (!newPassword || newPassword.length < 6) return setError('Password must be at least 6 characters.');
+    if (!tempVerifiedUser) return setError('Session expired. Please try again.');
+
+    setLoading(true);
+
+    try {
+      if (!isFirebaseConfigured) {
+        // Simulation Mode: Update local storage DB
+        const storedDb = localStorage.getItem('axora_users_db');
+        const mockDb = storedDb ? JSON.parse(storedDb) : {};
+
+        // Find user by email in simulation DB
+        const userId = Object.keys(mockDb).find(id => mockDb[id].email === resetEmail);
+        if (userId) {
+          mockDb[userId].password = newPassword; // Simulation only
+          localStorage.setItem('axora_users_db', JSON.stringify(mockDb));
+        }
+      } else {
+        // Real Firebase: Update the user record in Firestore
+        if (tempVerifiedUser.uid && !tempVerifiedUser.uid.startsWith('otp_')) {
+          await setDoc(doc(db, "users", tempVerifiedUser.uid), { password: newPassword }, { merge: true });
+        }
+      }
+
+      setMessage("Password updated successfully! Logging you in...");
+      localStorage.setItem('axora_otp_user', JSON.stringify(tempVerifiedUser));
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
+    } catch (err: any) {
+      console.error("Password update error:", err);
+      setError("Failed to update password. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSkipUpdate = () => {
+    if (tempVerifiedUser) {
+      setMessage("Redirecting to boutique...");
+      localStorage.setItem('axora_otp_user', JSON.stringify(tempVerifiedUser));
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
   };
 
 
@@ -624,8 +695,8 @@ const Auth: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/catalog')}
-                className="flex-1 border border-neutral-200 text-neutral-400 py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-neutral-50 transition-all"
+                onClick={handleSkipUpdate}
+                className="flex-1 border border-neutral-200 text-neutral-400 py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-neutral-50 transition-all font-bold"
               >
                 Skip
               </button>

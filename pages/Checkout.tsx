@@ -283,7 +283,7 @@ const Checkout: React.FC = () => {
                 </p>
                 <div className="flex flex-col gap-4">
                   <button
-                    onClick={() => navigate('/profile')}
+                    onClick={() => navigate('/orders')}
                     className="bg-charcoal dark:bg-gold text-offwhite dark:text-charcoal px-10 py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-clay transition-all"
                   >
                     Track Order

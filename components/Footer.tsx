@@ -23,7 +23,7 @@ const Footer: React.FC = () => {
             <ul className="text-xs space-y-4 text-neutral-400">
               <li><Link to="/services" className="hover:text-offwhite transition-colors">Bespoke Services</Link></li>
               {!isRestricted && (
-                <li><Link to="/orders" className="hover:text-offwhite transition-colors">Track Your Order</Link></li>
+                <li><Link to="/orders" className="hover:text-offwhite transition-colors">Track Order</Link></li>
               )}
             </ul>
           </div>

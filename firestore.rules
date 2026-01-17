@@ -1,0 +1,50 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      // Check for specific admin email OR 'admin' role in database
+      return request.auth.token.email == 'admin@gmail.com' || 
+             (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // User profile access
+    match /users/{userId} {
+      allow read: if request.auth != null || isAdmin();
+      allow write: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Product management
+    match /products/{productId} {
+      // Anyone can see the collection
+      allow read: if true;
+      
+      // Only sellers can create products
+      allow create: if (request.auth != null && 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller') || isAdmin();
+      
+      // Sellers can only edit their own products, Admins can edit/delete all
+      allow update, delete: if (request.auth != null && 
+                            resource.data.sellerId == request.auth.uid) || isAdmin();
+    }
+    
+    // Separate Orders collection
+    match /orders/{orderId} {
+      allow read: if request.auth != null && 
+                  (request.auth.uid == resource.data.buyerId || 
+                   get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller' ||
+                   get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      
+      allow create: if (request.auth != null && 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'buyer') || isAdmin();
+                    
+      allow update: if (request.auth != null && 
+                    (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seller' ||
+                     request.auth.uid == resource.data.buyerId)) || isAdmin();
+    }
+  }
+}

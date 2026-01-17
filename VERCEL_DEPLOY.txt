@@ -1,0 +1,71 @@
+==========================================================================
+                AXORA LUXURY MARKETPLACE - VERCEL DEPLOYMENT Guide
+==========================================================================
+
+Vercel is the best way to host your Vite/React project. You have two main 
+ways to deploy: using the Website (easiest) or the Terminal (fastest).
+
+--------------------------------------------------------------------------
+OPTION 1: DEPLOY VIA VERCEL WEBSITE (Recommended)
+--------------------------------------------------------------------------
+1. Upload your code to a GitHub repository (private or public).
+2. Go to: https://vercel.com/
+3. Sign in with your GitHub account.
+4. Click "Add New" -> "Project".
+5. Import your "AXORA" repository.
+6. Vercel will automatically detect "Vite".
+7. (IMPORTANT) If you are using real Firebase/EmailJS/Cloudinary keys:
+   - Click "Environment Variables".
+   - Add your keys (e.g., VITE_FIREBASE_API_KEY).
+8. Click "Deploy".
+9. Your site will be live on a ".vercel.app" URL!
+
+--------------------------------------------------------------------------
+OPTION 2: DEPLOY VIA TERMINAL (CLI)
+--------------------------------------------------------------------------
+1. Open your terminal in this project folder.
+2. Install Vercel CLI: 
+   npm install -g vercel
+3. Log in to Vercel:
+   vercel login
+4. Start the deployment:
+   vercel
+5. Follow the prompts (usually just press Enter for everything).
+6. Once finished, run this to go live:
+   vercel --prod
+
+--------------------------------------------------------------------------
+IMPORTANT: ENVIRONMENT VARIABLES
+--------------------------------------------------------------------------
+If you moved your keys to a .env file, you MUST add them to the Vercel 
+Dashboard under:
+Settings -> Environment Variables
+
+Add these names exactly as they are in your code:
+- VITE_FIREBASE_API_KEY
+- VITE_FIREBASE_AUTH_DOMAIN
+- VITE_FIREBASE_PROJECT_ID
+- VITE_FIREBASE_STORAGE_BUCKET
+- VITE_FIREBASE_MESSAGING_SENDER_ID
+- VITE_FIREBASE_APP_ID
+- VITE_EMAILJS_SERVICE_ID
+- VITE_EMAILJS_TEMPLATE_ID
+- VITE_EMAILJS_PUBLIC_KEY
+- VITE_CLOUDINARY_CLOUD_NAME
+- VITE_CLOUDINARY_UPLOAD_PRESET
+
+--------------------------------------------------------------------------
+FIXING "ROUTING" ISSUE ON VERCEL
+--------------------------------------------------------------------------
+Since this is a React app with "HashRouter" (which we are using), it should 
+work perfectly on Vercel out of the box. 
+
+If you decide to switch to "BrowserRouter" in the future, you will need 
+to add a 'vercel.json' file to the root folder with this content:
+
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}
+
+Enjoy your live website!
+==========================================================================

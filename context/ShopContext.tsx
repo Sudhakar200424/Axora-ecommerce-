@@ -185,11 +185,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setCart([]);
             setFavourites([]);
 
-            // Fallback for simulation OTP sessions
-            const otpUser = localStorage.getItem('axora_otp_user');
-            if (otpUser) {
-              try { setUser(JSON.parse(otpUser)); } catch { }
-            }
           }
         } catch (error) {
           console.error("Firestore Sync Error:", error);
@@ -318,7 +313,6 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     // 1. Clear Local Simulation Storage
     localStorage.removeItem('axora_sim_user');
-    localStorage.removeItem('axora_otp_user');
     localStorage.removeItem('axora_favourites');
 
     // 2. Clear State
@@ -386,8 +380,10 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
         shippingAddress: address,
         paymentMethod: paymentMethod,
         estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
-        sellerId: sid // Add top-level sellerId for easier querying and security
-      } as any; // Cast because types.ts might not have sellerId on Order yet
+        sellerId: sid,
+        customerName: `${address.firstName} ${address.lastName}`,
+        customerEmail: user.email
+      } as any;
 
       splitOrders.push(subOrder);
     });
@@ -400,19 +396,23 @@ export const ShopProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setUser(updatedUser);
 
+      // Add each sub-order to top-level orders collection (handles both Firebase and Simulation via addOrder)
+      try {
+        for (const order of splitOrders) {
+          await FirestoreService.addOrder(user.uid, order);
+        }
+      } catch (err) {
+        console.error("Failed to add orders to storage", err);
+      }
+
       if (isFirebaseConfigured) {
         try {
-          // Add each sub-order to top-level orders collection
-          for (const order of splitOrders) {
-            await FirestoreService.addOrder(user.uid, order);
-          }
-
           // Redundant update to user profile (historical)
           await FirestoreService.updateUserOrders(user.uid, updatedUser.orderHistory);
           await FirestoreService.saveUserAddress(user.uid, address);
           await FirestoreService.updateLocalCart(user.uid, []);
         } catch (err) {
-          console.error("Failed to add orders to Firestore", err);
+          console.error("Failed to update user profile in Firestore", err);
         }
       } else {
         saveToPersistence(updatedUser);

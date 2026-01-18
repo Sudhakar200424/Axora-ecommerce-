@@ -7,22 +7,10 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  updatePassword,
-  PhoneAuthProvider,
-  ConfirmationResult,
-  setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { setDoc, doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import emailjs from '@emailjs/browser';
-
-declare global {
-  interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-  }
-}
 
 const Auth: React.FC = () => {
   const { user } = useShop();
@@ -50,16 +38,12 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Email OTP State
-  const [mode, setMode] = useState<'email' | 'otp_verify' | 'update_password' | 'forgot_request'>('email');
+  // Authentication State Modes
+  const [mode, setMode] = useState<'email' | 'forgot_request'>('email');
   const [resetEmail, setResetEmail] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState('');
-  const [enteredOtp, setEnteredOtp] = useState('');
-  const [newPassword, setNewPassword] = useState('');
 
   // Signup State
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [tempVerifiedUser, setTempVerifiedUser] = useState<any>(null);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,45 +51,29 @@ const Auth: React.FC = () => {
     setLoading(true);
     localStorage.setItem('axora_pending_role', role);
 
-    // ADMIN LOGIN CHECK (Case insensitive email, strict password)
-    // Using trim() to handle accidental spaces
+    // ADMIN LOGIN CHECK
     if (email.trim().toLowerCase() === 'admin@gmail.com' && password.trim() === 'Axo1515') {
-      console.log("Admin Login Detected - Authenticating with Firebase...");
+      console.log("Admin Login Detected");
       try {
-        // Try to login normally first
         await signInWithEmailAndPassword(auth, email, password);
       } catch (adminErr: any) {
-        // If admin doesn't exist yet, create it automatically
         if (adminErr.code === 'auth/user-not-found' || adminErr.code === 'auth/invalid-credential') {
-          console.log("Admin account not found, creating it...");
           await createUserWithEmailAndPassword(auth, email, password);
         } else {
-          // If password wrong or other error, let standard error handling catch it?
-          // Actually, we want to enforce Axo1515, so if we are here, we know password IS 'Axo1515'
-          // so the only error could be network or such.
           throw adminErr;
         }
       }
-
-      // If we reach here, we are signed in as admin@gmail.com
       sessionStorage.setItem('axo_admin_auth', 'true');
       setLoading(false);
       navigate('/admin');
-
-      // Force reload to ensure auth state propogates if needed, 
-      // though navigate might be enough if listeners fire.
-      // A reload is safer for role switching.
       setTimeout(() => window.location.reload(), 100);
       return;
     }
 
     if (!isFirebaseConfigured) {
-      // Simulation mode with Persistence
-      // 1. Load the "Mock DB"
+      // Simulation mode
       const storedDb = localStorage.getItem('axora_users_db');
       const mockDb: Record<string, any> = storedDb ? JSON.parse(storedDb) : {};
-
-      // 2. Check if user exists (Simple email lookup)
       let targetUser = Object.values(mockDb).find((u: any) => u.email === email);
 
       if (isLogin) {
@@ -114,17 +82,13 @@ const Auth: React.FC = () => {
           setLoading(false);
           return;
         }
-        // Login Success: Load their data into session
         localStorage.setItem('axora_sim_user', JSON.stringify(targetUser));
       } else {
-        // Sign Up
         if (targetUser) {
           setError("Email already exists in simulation. Please login.");
           setLoading(false);
           return;
         }
-
-        // Create new user
         const newUid = 'sim_' + Date.now();
         const newUser = {
           uid: newUid,
@@ -132,66 +96,22 @@ const Auth: React.FC = () => {
           email,
           role,
           orderHistory: [],
-          savedAddress: undefined,
           cart: [],
           favourites: []
         };
-
-        // Save to Mock DB
         mockDb[newUid] = newUser;
         localStorage.setItem('axora_users_db', JSON.stringify(mockDb));
-
-        // Set User Session
         localStorage.setItem('axora_sim_user', JSON.stringify(newUser));
       }
-
-      // Force reload to pick up local storage change in ShopContext
       window.location.reload();
       return;
     }
 
     try {
       if (isLogin) {
-        try {
-          await signInWithEmailAndPassword(auth, email, password);
-        } catch (firebaseErr: any) {
-          console.warn("Firebase Auth failed, trying Custom Fallback...", firebaseErr.code);
-
-          // FALLBACK LOGIC: If standard auth fails, check Firestore for custom password
-          if (firebaseErr.code === 'auth/invalid-credential' || firebaseErr.code === 'auth/wrong-password' || firebaseErr.code === 'auth/user-not-found') {
-            const usersRef = collection(db, "users");
-            const q = query(usersRef, where("email", "==", email.trim().toLowerCase()));
-            const snap = await getDocs(q);
-
-            if (!snap.empty) {
-              const userData = snap.docs[0].data() as any;
-              // Check if the custom password field exists and matches
-              if (userData.password === password) {
-                console.log("Custom Fallback Success: Password matched in Firestore profile.");
-                const customUser = {
-                  uid: snap.docs[0].id,
-                  email: userData.email,
-                  name: userData.name || 'Member',
-                  role: userData.role || role || 'buyer',
-                  orderHistory: userData.orderHistory || []
-                };
-                // Save to local storage (same as OTP flow)
-                localStorage.setItem('axora_otp_user', JSON.stringify(customUser));
-                setMessage("Login Successful via Secure Profile. Redirecting...");
-                setTimeout(() => window.location.reload(), 1000);
-                return;
-              }
-            }
-          }
-          // If fallback also fails, re-throw the original error
-          throw firebaseErr;
-        }
-
-        // Standard Login Success
+        await signInWithEmailAndPassword(auth, email, password);
         setMessage("Login Successful! Redirecting...");
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
+        setTimeout(() => window.location.reload(), 500);
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         try {
@@ -203,26 +123,21 @@ const Auth: React.FC = () => {
             createdAt: new Date().toISOString(),
             orderHistory: []
           });
-        } catch (e) { console.error("Profile creation failed", e); }
+        } catch (e) {
+          console.error("Profile creation failed", e);
+        }
         navigate(role === 'seller' ? '/seller/dashboard' : '/catalog');
       }
     } catch (err: any) {
       console.error("Auth Error:", err);
-      if (err.code === 'auth/invalid-credential') {
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
         setError("Invalid email or password.");
       } else if (err.code === 'auth/email-already-in-use') {
-        setError("Email already in use. Please login.");
-      } else if (err.code === 'auth/invalid-email') {
-        setError("Please enter a valid email address.");
-      } else if (err.code === 'auth/user-not-found') {
-        setError("No account found with this email.");
-      } else if (err.code === 'auth/wrong-password') {
-        setError("Incorrect password.");
+        setError("Email already in use.");
       } else {
-        setError("Authentication failed. Please try again.");
+        setError(err.message || "Authentication failed.");
       }
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   };
@@ -249,224 +164,54 @@ const Auth: React.FC = () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-
       setMessage("Login Successful! Redirecting...");
 
-      // Ensure profile exists before reloading
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (!userDoc.exists()) {
           await setDoc(doc(db, "users", user.uid), {
             name: user.displayName || 'Maison Member',
             email: user.email,
-            role: role, // Use the selected role (buyer or seller)
+            role: role,
             createdAt: new Date().toISOString(),
             orderHistory: []
           });
-          console.log("Auth: New Google profile created with role:", role);
         }
       } catch (error) {
-        console.warn("Profile sync failed (non-critical):", error);
+        console.warn("Profile sync failed:", error);
       }
 
-      // Navigate after profile is guaranteed
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-
+      setTimeout(() => window.location.reload(), 500);
     } catch (err: any) {
       console.error("Google Auth Error:", err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError("Sign in cancelled by user.");
-      } else if (err.code === 'auth/cancelled-popup-request') {
-        setError("Another popup request is active.");
-      } else {
-        setError("Google Sign In failed: " + err.message);
-      }
+      setError(err.message);
     } finally {
       if (!message) setLoading(false);
     }
   };
 
-  const setupRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'normal',
-        'callback': () => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-          setError('Recaptcha expired, please try again.');
-        }
-      });
-    }
-  };
-
-
-  const sendEmailOtp = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail) return setError('Please enter your registered email');
     setError('');
     setMessage('');
     setLoading(true);
 
-    // OPTIMIZATION: Immediate UI feedback (Optimistic UI)
-    // We start the process, but we will transition the UI as soon as we verified user existence (or decided to proceed).
-
-    try {
-      // 1. Check if user exists in Firestore efficiently
-      const usersRef = collection(db, "users");
-      // Use exact match query. Scanning all users is dangerous for performance.
-      const q = query(usersRef, where("email", "==", resetEmail));
-
-      // If you really need case-insensitive, store a "emailLowercase" field in DB. 
-      // For now, we will trust the exact match or try a simple assumption if not strict.
-      const exactMatchSnapshot = await getDocs(q);
-
-      let targetUserDoc = null;
-      let userData = { email: resetEmail, name: "User" };
-
-      if (!exactMatchSnapshot.empty) {
-        targetUserDoc = exactMatchSnapshot.docs[0];
-        userData = targetUserDoc.data() as any;
-      } else {
-        // If not found by exact match, we can optionally warn or just proceed 
-        // (security by obscurity: don't reveal if email exists).
-        // For this app, let's assume valid for the sake of "sending" to avoid blocking.
-        // REMOVED: The "Fetch All Users" scan. It is too slow.
-      }
-
-      // 2. Generate OTP
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedOtp(code);
-
-      // 3. Optimistic UI Update: Switch IMMEDIATELY
-      setMode('otp_verify');
-      setMessage(`Sending code to ${resetEmail}...`);
-      setLoading(false); // Stop invalidating the UI
-
-      // 4. Send via EmailJS in BACKGROUND (non-blocking)
-      emailjs.send(
-        'service_z3crw8g',
-        'template_usujwjl',
-        {
-          to_email: userData.email,
-          otp_code: code,
-          to_name: userData.name || "User"
-        },
-        'NUfiKI0BsQ8lMnczO'
-      ).then(() => {
-        setMessage(`OTP code sent to ${resetEmail} `);
-      }).catch((err) => {
-        console.error("EmailJS Error:", err);
-        setError('Failed to send email. Please click "Resend Code".');
-        // We stay on the verify screen so they can try again or check spam.
-      });
-
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Error preparing OTP.');
-      setLoading(false);
-    }
-  };
-
-  const verifyEmailOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!enteredOtp) return setError('Please enter the OTP code');
-
-    setLoading(true);
-    // Simple string comparison
-    if (enteredOtp === generatedOtp) {
-      setMessage('Verified successfully! You can now update your password or skip.');
-
-      try {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", resetEmail));
-        const userSnap = await getDocs(q);
-
-        let userData = { name: 'Member', role: 'buyer' };
-        let uid = 'otp_' + Date.now();
-
-        if (!userSnap.empty) {
-          userData = userSnap.docs[0].data() as any;
-          uid = userSnap.docs[0].id;
-        }
-
-        const fakeAuthUser = {
-          uid: uid,
-          email: resetEmail,
-          name: userData.name || 'User',
-          role: userData.role || role || 'buyer',
-          orderHistory: []
-        };
-
-        // Store temp user and move to update password screen
-        setTempVerifiedUser(fakeAuthUser);
-        setMode('update_password');
-        setLoading(false);
-
-      } catch (e) {
-        console.error(e);
-        setError('Verification success, but session preparation failed.');
-        setLoading(false);
-      }
-    } else {
-      setError('Invalid Code. Please check your email again.');
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword || newPassword.length < 6) return setError('Password must be at least 6 characters.');
-    if (!tempVerifiedUser) return setError('Session expired. Please try again.');
-
-    setLoading(true);
-
     try {
       if (!isFirebaseConfigured) {
-        // Simulation Mode: Update local storage DB
-        const storedDb = localStorage.getItem('axora_users_db');
-        const mockDb = storedDb ? JSON.parse(storedDb) : {};
-
-        // Find user by email in simulation DB
-        const userId = Object.keys(mockDb).find(id => mockDb[id].email === resetEmail);
-        if (userId) {
-          mockDb[userId].password = newPassword; // Simulation only
-          localStorage.setItem('axora_users_db', JSON.stringify(mockDb));
-        }
-      } else {
-        // Real Firebase: Update the user record in Firestore
-        if (tempVerifiedUser.uid && !tempVerifiedUser.uid.startsWith('otp_')) {
-          await setDoc(doc(db, "users", tempVerifiedUser.uid), { password: newPassword }, { merge: true });
-        }
+        setMessage("Simulation Mode: Reset link sent to " + resetEmail);
+        setLoading(false);
+        return;
       }
-
-      setMessage("Password updated successfully! Logging you in...");
-      localStorage.setItem('axora_otp_user', JSON.stringify(tempVerifiedUser));
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
-
+      await sendPasswordResetEmail(auth, resetEmail);
+      setMessage(`Secure reset link sent to ${resetEmail}. Please check your inbox (and your spam/junk folder).`);
+      setLoading(false);
     } catch (err: any) {
-      console.error("Password update error:", err);
-      setError("Failed to update password. Please try again.");
-    } finally {
+      console.error("Password reset error:", err);
+      setError(err.message || 'Error sending reset link.');
       setLoading(false);
     }
   };
-
-  const handleSkipUpdate = () => {
-    if (tempVerifiedUser) {
-      setMessage("Redirecting to boutique...");
-      localStorage.setItem('axora_otp_user', JSON.stringify(tempVerifiedUser));
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    }
-  };
-
 
   return (
     <div className="flex items-center justify-center min-h-[80vh] bg-offwhite dark:bg-charcoal px-6 transition-colors">
@@ -607,14 +352,11 @@ const Auth: React.FC = () => {
           </button>
         </div>
 
-
-
-
-        {/* EMAIL OTP REQUEST MODE */}
+        {/* FORGOT PASSWORD MODE */}
         {mode === 'forgot_request' && (
-          <form className="space-y-6" onSubmit={sendEmailOtp}>
+          <form className="space-y-6" onSubmit={handleForgotPassword}>
             <p className="text-center text-xs text-neutral-500 mb-2">
-              Enter your registered email to receive an OTP code.
+              Enter email for a password reset link.
             </p>
             <div className="border-b border-neutral-200 dark:border-neutral-700 pb-2">
               <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">Registered Email</label>
@@ -627,84 +369,20 @@ const Auth: React.FC = () => {
                 required
               />
             </div>
-
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-charcoal dark:bg-gold text-offwhite dark:text-charcoal py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-clay transition-all disabled:opacity-50"
             >
-              {loading ? 'Sending...' : 'Send OTP Code'}
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
-            <button type="button" onClick={() => { setMode('email'); setError(''); }} className="w-full mt-2 text-[10px] uppercase tracking-widest text-neutral-400">
+            <button type="button" onClick={() => { setMode('email'); setError(''); setMessage(''); }} className="w-full mt-2 text-[10px] uppercase tracking-widest text-neutral-400">
               Back to Login
             </button>
           </form>
         )}
-
-        {/* EMAIL OTP VERIFY MODE */}
-        {mode === 'otp_verify' && (
-          <form className="space-y-6" onSubmit={verifyEmailOtp}>
-            <p className="text-center text-xs text-neutral-500 mb-2">
-              We sent a code to <span className="font-bold text-charcoal dark:text-offwhite">{resetEmail}</span>
-            </p>
-            <div className="border-b border-neutral-200 dark:border-neutral-700 pb-2">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">Enter 6-Digit Code</label>
-              <input
-                type="text"
-                placeholder="XXXXXX"
-                value={enteredOtp}
-                onChange={(e) => setEnteredOtp(e.target.value)}
-                className="w-full bg-transparent focus:outline-none text-sm dark:text-offwhite tracking-[0.5em] text-center font-bold"
-                required
-                maxLength={6}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-charcoal dark:bg-gold text-offwhite dark:text-charcoal py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-clay transition-all disabled:opacity-50"
-            >
-              {loading ? 'Verifying...' : 'Verify & Login'}
-            </button>
-            <button type="button" onClick={() => setMode('forgot_request')} className="w-full mt-2 text-[10px] uppercase tracking-widest text-neutral-400">
-              Resend Code
-            </button>
-          </form>
-        )}
-
-        {/* UDPATE PASSWORD MODE */}
-        {mode === 'update_password' && (
-          <form className="space-y-6" onSubmit={handlePasswordUpdate}>
-            <p className="text-center text-xs text-neutral-500 mb-4">Set a new password for future email logins (optional)</p>
-            <div className="border-b border-neutral-200 dark:border-neutral-700 pb-2">
-              <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1">New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-transparent focus:outline-none text-sm dark:text-offwhite"
-              />
-            </div>
-            <div className="flex gap-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-charcoal dark:bg-gold text-offwhite dark:text-charcoal py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-clay transition-all disabled:opacity-50"
-              >
-                {loading ? 'Saving...' : 'Update Password'}
-              </button>
-              <button
-                type="button"
-                onClick={handleSkipUpdate}
-                className="flex-1 border border-neutral-200 text-neutral-400 py-4 text-xs font-bold uppercase tracking-[0.2em] hover:bg-neutral-50 transition-all font-bold"
-              >
-                Skip
-              </button>
-            </div>
-          </form>
-        )}
       </div>
-    </div >
+    </div>
   );
 };
 

@@ -13,12 +13,14 @@ const AdminDashboard: React.FC = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [activeTab, setActiveTab] = useState<'products' | 'users' | 'requests'>('products');
+    const [activeTab, setActiveTab] = useState<'products' | 'users' | 'requests' | 'orders'>('products');
     const [users, setUsers] = useState<User[]>([]);
     const [orders, setOrders] = useState<any[]>([]);
     const [sellerRequests, setSellerRequests] = useState<any[]>([]); // TODO: Define proper type
     const [loading, setLoading] = useState(false);
+    const [ordersLoading, setOrdersLoading] = useState(false);
     const [authChecking, setAuthChecking] = useState(true);
+    const [lastRefresh, setLastRefresh] = useState<string>('');
 
     useEffect(() => {
         // Determine initial UI state from session
@@ -45,7 +47,20 @@ const AdminDashboard: React.FC = () => {
             }
         });
 
-        return () => unsubscribe();
+        // Listen for live updates (simulation-friendly sync)
+        const maisonSyncChannel = new BroadcastChannel('axora_marketplace_sync');
+        maisonSyncChannel.onmessage = (event) => {
+            if (event.data === 'REFRESH_ORDERS' || event.data === 'REFRESH_USER_DATA') {
+                fetchOrders();
+                fetchUsers();
+            }
+        };
+
+        return () => {
+            unsubscribe();
+            maisonSyncChannel.onmessage = null;
+            maisonSyncChannel.close();
+        };
     }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -85,16 +100,37 @@ const AdminDashboard: React.FC = () => {
     };
 
     const fetchOrders = async () => {
-        const allOrders = await getAllOrders();
-        setOrders(allOrders);
+        setOrdersLoading(true);
+        try {
+            const allOrders = await getAllOrders();
+            setOrders(allOrders);
+            setLastRefresh(new Date().toLocaleTimeString());
+        } catch (err) {
+            console.error("Error fetching orders:", err);
+        } finally {
+            setOrdersLoading(false);
+        }
     };
 
     // Dummy fetch for requests until implemented
     const fetchSellerRequests = async () => {
         // In a real app, fetch from 'seller_requests' collection
-        setSellerRequests([
-            { id: 'req_1', name: 'Potential Seller', email: 'applicant@example.com', brandName: 'LuxBrand', description: 'High end fashion items.' }
-        ]);
+        setSellerRequests([]);
+    };
+
+    const getSellerName = (sellerId: string) => {
+        if (!sellerId || sellerId === 'system-seller') return 'Axora Direct';
+        const found = users.find(u => u.uid === sellerId);
+        return found ? found.name : `Seller (${sellerId.slice(0, 4)})`;
+    };
+
+    const getBuyerName = (order: any) => {
+        if (order.customerName) return order.customerName;
+        if (order.shippingAddress) {
+            const { firstName, lastName } = order.shippingAddress;
+            if (firstName || lastName) return `${firstName || ''} ${lastName || ''}`.trim();
+        }
+        return 'Anonymous';
     };
 
     const formatCurrency = (val: number) => {
@@ -104,8 +140,36 @@ const AdminDashboard: React.FC = () => {
     };
 
     const totalRevenue = orders
-        .filter(o => o.status !== 'Cancelled')
-        .reduce((sum, o) => sum + (o.total || 0), 0);
+        .filter(o => {
+            const s = (o.status || '').toLowerCase();
+            return s !== 'cancelled' && s !== 'rejected';
+        })
+        .reduce((sum, o) => {
+            // Level 1: Standard total field
+            let val = o.total || o.totalAmount;
+
+            // Level 2: Sum items if total is missing
+            if (val === undefined || val === null || val === 0) {
+                if (o.items && Array.isArray(o.items)) {
+                    val = o.items.reduce((s: number, i: any) => {
+                        const p = String(i.price || 0).replace(/[^0-9.]/g, '');
+                        return s + (parseFloat(p) || 0) * Number(i.quantity || 1);
+                    }, 0);
+                }
+            }
+
+            // Cleanup any string formatting (commas, symbols)
+            const clean = String(val || 0).replace(/[^0-9.]/g, '');
+            return sum + (parseFloat(clean) || 0);
+        }, 0);
+
+    // Monitoring
+    useEffect(() => {
+        console.log(`AXORA ADMIN: Database check - ${users.length} users, ${products.length} products, ${orders.length} orders found.`);
+        if (orders.length > 0) {
+            console.log(`AXORA ADMIN: Calculated Revenue: ₹${totalRevenue}`);
+        }
+    }, [orders.length, users.length, products.length, totalRevenue]);
 
     const handleDeleteProduct = async (productId: string) => {
         if (confirm("Are you sure you want to permanently delete this product?")) {
@@ -143,14 +207,6 @@ const AdminDashboard: React.FC = () => {
     };
 
     // Placeholder functions for new UI actions
-    const handlePromoteToSeller = async (uid: string) => {
-        if (confirm("Promote this user to Seller?")) {
-            alert(`User ${uid} promoted to Seller (Simulation)`);
-            // Implementation: Update user role in Firestore 'users' collection
-            fetchUsers();
-        }
-    };
-
     const handleRequestAction = async (reqId: string, action: 'approve' | 'reject') => {
         alert(`Request ${reqId} ${action}ed (Simulation)`);
         // Implementation: If approved, create seller profile and update user role. If reject, delete request.
@@ -182,7 +238,7 @@ const AdminDashboard: React.FC = () => {
         <div className="flex flex-col md:flex-row min-h-[calc(100vh-80px)] bg-offwhite dark:bg-charcoal font-sans transition-colors duration-300">
 
             {/* SIDEBAR (Desktop Only) */}
-            <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-neutral-900 border-r border-gold/20 p-6 fixed md:relative h-full z-10 shrink-0">
+            <aside className="hidden md:flex flex-col w-64 bg-neutral-50 dark:bg-neutral-900 border-r border-gold/20 p-6 fixed md:relative h-full z-10 shrink-0">
                 <div className="mb-10">
                     <span className="text-gold text-[10px] font-bold uppercase tracking-[0.3em] mb-1 block">Admin Portal</span>
                     <h1 className="text-2xl font-serif text-charcoal dark:text-offwhite uppercase tracking-widest leading-none">Dashboard</h1>
@@ -207,6 +263,13 @@ const AdminDashboard: React.FC = () => {
                     >
                         <span>Seller Applications</span>
                         {sellerRequests.length > 0 && <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[8px]">{sellerRequests.length}</span>}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('orders')}
+                        className={`w-full text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest rounded transition-all flex justify-between items-center ${activeTab === 'orders' ? 'bg-gold text-charcoal' : 'text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:text-neutral-400'}`}
+                    >
+                        <span>Order History</span>
+                        {orders.length > 0 && <span className="bg-gold text-charcoal px-1.5 py-0.5 rounded-full text-[8px]">{orders.length}</span>}
                     </button>
                 </nav>
 
@@ -238,7 +301,7 @@ const AdminDashboard: React.FC = () => {
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                 )}
                             </button>
-                            <button onClick={handleLogout} className="bg-charcoal text-white px-3 py-1.5 rounded text-[9px] uppercase font-bold tracking-widest">Logout</button>
+                            <button onClick={handleLogout} className="bg-charcoal dark:bg-gold text-white dark:text-charcoal px-3 py-1.5 rounded text-[9px] uppercase font-bold tracking-widest">Logout</button>
                         </div>
                     </div>
                     {/* Mobile Tab Nav */}
@@ -246,15 +309,33 @@ const AdminDashboard: React.FC = () => {
                         <button onClick={() => setActiveTab('users')} className={`whitespace-nowrap px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-widest border transition-colors ${activeTab === 'users' ? 'bg-gold text-charcoal border-gold' : 'border-neutral-200 text-neutral-500'}`}>Users</button>
                         <button onClick={() => setActiveTab('products')} className={`whitespace-nowrap px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-widest border transition-colors ${activeTab === 'products' ? 'bg-gold text-charcoal border-gold' : 'border-neutral-200 text-neutral-500'}`}>Products</button>
                         <button onClick={() => setActiveTab('requests')} className={`whitespace-nowrap px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-widest border transition-colors ${activeTab === 'requests' ? 'bg-gold text-charcoal border-gold' : 'border-neutral-200 text-neutral-500'}`}>Requests</button>
+                        <button onClick={() => setActiveTab('orders')} className={`whitespace-nowrap px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-widest border transition-colors ${activeTab === 'orders' ? 'bg-gold text-charcoal border-gold' : 'border-neutral-200 text-neutral-500'}`}>Orders</button>
                     </div>
                 </div>
 
                 {/* Info Cards */}
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">Platform Analytics</h2>
+                        <p className="text-[9px] text-neutral-400 italic">Last sync: {lastRefresh || 'waiting...'}</p>
+                    </div>
+                    <button
+                        onClick={fetchOrders}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded border border-gold/30 text-[9px] font-bold uppercase tracking-widest hover:bg-gold hover:text-charcoal transition-all ${ordersLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={ordersLoading}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 ${ordersLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {ordersLoading ? 'Syncing...' : 'Sync Database'}
+                    </button>
+                </div>
+
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     {[
                         { label: 'Total Users', value: users.length, icon: 'Users' },
                         { label: 'Total Products', value: products.length, icon: 'Box' },
-                        { label: 'Pending Requests', value: sellerRequests.length, icon: 'Clock' },
+                        { label: 'Total Orders', value: orders.length, icon: 'ShoppingBag' },
                         { label: 'Platform Revenue', value: formatCurrency(totalRevenue), icon: 'TrendingUp' }
                     ].map((stat, i) => (
                         <div key={i} className="bg-white dark:bg-clay p-4 md:p-5 rounded shadow-sm border border-neutral-100 dark:border-neutral-800">
@@ -303,14 +384,6 @@ const AdminDashboard: React.FC = () => {
                                                     Remove
                                                 </button>
                                             )}
-                                            {user.role === 'buyer' && (
-                                                <button
-                                                    onClick={() => handlePromoteToSeller(user.uid)}
-                                                    className="bg-charcoal dark:bg-gold text-white dark:text-charcoal px-3 py-1.5 rounded text-[9px] uppercase tracking-widest w-full hover:bg-black"
-                                                >
-                                                    Make Seller
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -346,11 +419,6 @@ const AdminDashboard: React.FC = () => {
                                                     {user.uid !== auth.currentUser?.uid && (
                                                         <button onClick={() => handleDeleteUser(user.uid)} className="text-red-400 hover:text-red-600 text-[10px] uppercase tracking-widest font-bold mr-3">
                                                             Remove
-                                                        </button>
-                                                    )}
-                                                    {user.role === 'buyer' && (
-                                                        <button onClick={() => handlePromoteToSeller(user.uid)} className="text-gold hover:text-charcoal dark:hover:text-white transition-colors text-[10px] uppercase tracking-widest font-bold">
-                                                            Promote
                                                         </button>
                                                     )}
                                                 </td>
@@ -516,6 +584,95 @@ const AdminDashboard: React.FC = () => {
                                     </div>
                                 </>
                             )}
+                        </div>
+                    )}
+
+                    {/* ORDERS TAB */}
+                    {activeTab === 'orders' && (
+                        <div className="p-5">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-lg font-serif text-charcoal dark:text-offwhite uppercase tracking-widest">Platform Orders</h2>
+                                <span className="text-[10px] text-neutral-400 uppercase tracking-widest">Total: {orders.length}</span>
+                            </div>
+
+                            {/* Mobile View - Order Cards */}
+                            <div className="md:hidden space-y-4">
+                                {orders.map((order: any) => (
+                                    <div key={order.id} className="bg-neutral-50 dark:bg-neutral-800/50 p-4 rounded-lg border border-neutral-100 dark:border-neutral-800">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <p className="font-mono text-[9px] text-neutral-400 uppercase tracking-tighter">{order.id}</p>
+                                                <p className="text-[10px] text-neutral-500">{order.date}</p>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded text-[8px] uppercase tracking-widest font-bold ${order.status === 'Processing' ? 'bg-green-100 text-green-800' :
+                                                order.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                                    'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
+                                                }`}>
+                                                {order.status}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Buyer</p>
+                                                <p className="text-xs text-charcoal dark:text-offwhite font-medium">{getBuyerName(order)}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Seller</p>
+                                                <p className="text-xs text-gold font-medium">{getSellerName(order.sellerId)}</p>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-neutral-200/50 dark:border-neutral-700/50 flex justify-between items-center">
+                                            <p className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest">Total Amount</p>
+                                            <p className="font-sans font-bold text-sm text-charcoal dark:text-offwhite">
+                                                ₹{(parseFloat(String(order.total || order.totalAmount ||
+                                                    (order.items && Array.isArray(order.items)
+                                                        ? order.items.reduce((s: number, i: any) => s + (parseFloat(String(i.price || 0).replace(/[^0-9.]/g, '')) || 0) * Number(i.quantity || 1), 0)
+                                                        : 0)).replace(/[^0-9.]/g, '')) || 0).toLocaleString()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Desktop View - Table */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead className="border-b border-neutral-100 dark:border-neutral-800">
+                                        <tr>
+                                            <th className="pb-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400">Order ID</th>
+                                            <th className="pb-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400">Date</th>
+                                            <th className="pb-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400">Buyer</th>
+                                            <th className="pb-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400">Seller</th>
+                                            <th className="pb-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400">Amount</th>
+                                            <th className="pb-3 text-[10px] font-bold uppercase tracking-widest text-neutral-400">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
+                                        {orders.map((order: any) => (
+                                            <tr key={order.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
+                                                <td className="py-3 font-mono text-[10px] text-neutral-400">{order.id}</td>
+                                                <td className="py-3 text-xs text-neutral-500">{order.date}</td>
+                                                <td className="py-3 text-xs text-charcoal dark:text-offwhite font-medium">{getBuyerName(order)}</td>
+                                                <td className="py-3 text-xs text-gold font-medium uppercase tracking-tighter">{getSellerName(order.sellerId)}</td>
+                                                <td className="py-3 font-sans font-bold text-xs text-charcoal dark:text-offwhite">
+                                                    ₹{(parseFloat(String(order.total || order.totalAmount ||
+                                                        (order.items && Array.isArray(order.items)
+                                                            ? order.items.reduce((s: number, i: any) => s + (parseFloat(String(i.price || 0).replace(/[^0-9.]/g, '')) || 0) * Number(i.quantity || 1), 0)
+                                                            : 0)).replace(/[^0-9.]/g, '')) || 0).toLocaleString()}
+                                                </td>
+                                                <td className="py-3">
+                                                    <span className={`px-2 py-0.5 rounded text-[9px] uppercase tracking-widest font-bold ${order.status === 'Processing' ? 'bg-green-100 text-green-800' :
+                                                        order.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                                            'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300'
+                                                        }`}>
+                                                        {order.status}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
 

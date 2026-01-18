@@ -71,12 +71,12 @@ const Profile: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           {/* Menu */}
-          <div className="col-span-1 space-y-4">
+          <div className="col-span-1 space-y-2 bg-neutral-50 dark:bg-clay/30 p-4 rounded-lg h-fit border border-neutral-100 dark:border-neutral-800">
             {(user.role === 'seller' ? ['Profile Details'] : ['Profile Details', 'Wishlist', 'Address Book']).map((item) => (
               <button
                 key={item}
                 onClick={() => setActiveTab(item)}
-                className={`w-full text-left py-4 px-6 text-[10px] font-bold uppercase tracking-widest border-l-2 transition-all ${activeTab === item ? 'border-gold bg-white dark:bg-clay shadow-sm text-charcoal dark:text-offwhite' : 'border-transparent text-neutral-400 hover:border-neutral-200 hover:bg-neutral-50 dark:hover:bg-clay'} `}
+                className={`w-full text-left py-4 px-6 text-[10px] font-bold uppercase tracking-widest border-l-2 transition-all ${activeTab === item ? 'border-gold bg-white dark:bg-clay shadow-sm text-charcoal dark:text-offwhite' : 'border-transparent text-neutral-400 hover:border-neutral-200 hover:text-charcoal dark:hover:text-offwhite'} `}
               >
                 {item}
               </button>

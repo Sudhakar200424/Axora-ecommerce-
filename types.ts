@@ -55,4 +55,6 @@ export interface Order {
   paymentMethod: PaymentMethod;
   estimatedDelivery: string;
   sellerId?: string;
+  customerName?: string;
+  customerEmail?: string;
 }

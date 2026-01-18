@@ -14,7 +14,7 @@ const CartDrawer: React.FC = () => {
       <div className="absolute inset-0 bg-charcoal bg-opacity-50 backdrop-blur-sm" onClick={toggleCart} />
 
       <div className="relative w-full max-w-md bg-offwhite dark:bg-charcoal h-full shadow-2xl flex flex-col transform transition-transform duration-500 ease-in-out">
-        <div className="p-6 border-b border-neutral-200 dark:border-neutral-700 flex justify-between items-center bg-charcoal text-offwhite">
+        <div className="p-6 border-b border-neutral-200 dark:border-neutral-700 flex justify-between items-center bg-white dark:bg-neutral-900 text-charcoal dark:text-offwhite">
           <h2 className="text-xl font-serif tracking-widest uppercase">Shopping Bag</h2>
           <button onClick={toggleCart} className="hover:text-gold">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

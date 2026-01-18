@@ -75,48 +75,7 @@ service cloud.firestore {
 
 
 --------------------------------------------------------------------------
-STEP 2: EMAILJS SETUP (For Login/Forgot Password OTP Codes)
---------------------------------------------------------------------------
-1. Go to: https://www.emailjs.com/
-2. Create a free account.
-3. Click "Add New Service" -> Select "Gmail".
-4. Go to "Email Templates" -> "Create New Template".
-and click edit->code designer
-
-<div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; min-width:1000px; overflow:auto; line-height:2; background-color: #f6f9fc; padding: 50px 0;">
-  <div style="margin:0 auto; width:70%; background: #ffffff; padding:40px; border-radius: 8px; shadow: 0 4px 10px rgba(0,0,0,0.05);">
-    <div style="border-bottom:2px solid #D4AF37; padding-bottom: 20px; margin-bottom: 30px; text-align: center;">
-      <a href="" style="font-size:2em; color: #1a1a1a; text-decoration:none; font-weight:700; letter-spacing: 5px;">AXORA</a>
-    </div>
-    <p style="font-size:1.2em; color: #333; font-weight: 500;">Hello,</p>
-    <p style="color: #555;">Thank you for choosing Axora. Please use the verification code below to complete your request. This code is valid for 5 minutes.</p>
-    
-    <div style="text-align: center; margin: 40px 0;">
-      <h2 style="display: inline-block; background: #D4AF37; margin: 0; padding: 15px 40px; color: #fff; border-radius: 4px; font-size: 2.5em; letter-spacing: 12px; font-weight: bold; font-family: monospace;">{{otp_code}}</h2>
-      <p style="font-size: 0.8em; color: #888; margin-top: 10px;">(Highlight and copy the code above)</p>
-    </div>
-
-    <p style="color: #555;">Do not share this OTP with anyone. If you didn't make this request, you can safely ignore this email.</p>
-    <p style="font-size:0.9em; color: #333;">Regards,<br /><strong>Axora Team</strong></p>
-    
-    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color:#aaa; font-size:0.8em; text-align: center;">
-      <p style="margin: 0;">Axora Inc | Luxury E-Commerce</p>
-    </div>
-  </div>
-</div>
-
-*Note: For security, emails do not allow "interactive buttons" that copy text automatically (JavaScript is blocked). The template above makes the code very large and clear for easy selection.*
-
-//paste this conent and click save Changes.
-6. Save the template.
-7. Open the file in this project: "src/pages/Auth.tsx"
-8. Go to line ~312 and replace:
-   - Your Service ID (e.g., service_xxxx)
-   - Your Template ID (e.g., template_xxxx)
-   - Your Public Key (found in Account settings)
-
---------------------------------------------------------------------------
-STEP 3: CLOUDINARY SETUP (For Seller Product Uploads)
+STEP 2: CLOUDINARY SETUP (For Seller Product Uploads)
 --------------------------------------------------------------------------
 1. Go to: https://cloudinary.com/
 2. Create a free account.
@@ -130,15 +89,15 @@ STEP 3: CLOUDINARY SETUP (For Seller Product Uploads)
    - CLOUDINARY_UPLOAD_PRESET
 
 --------------------------------------------------------------------------
-STEP 4: ADMIN CREDENTIALS
+STEP 3: ADMIN CREDENTIALS
 --------------------------------------------------------------------------
-1. The default Admin login is hardcoded in "src/pages/AdminDashboard.tsx" (line ~53).
+1. The default Admin login is hardcoded in "src/pages/Auth.tsx" (line ~65).
 2. Email: admin@gmail.com
 3. Password: Axo1515
 4. You can change these to whatever you like!
 
 --------------------------------------------------------------------------
-STEP 5: HOW TO RUN
+STEP 4: HOW TO RUN
 --------------------------------------------------------------------------
 1. Open this folder in VS Code.
 2. Open terminal and type: npm install

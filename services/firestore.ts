@@ -225,6 +225,8 @@ export const getSellerOrders = async (sellerId: string) => {
                             orderId: orderData.id,
                             customerId: orderData.buyerId,
                             shippingAddress: orderData.shippingAddress,
+                            customerName: orderData.customerName,
+                            customerEmail: orderData.customerEmail,
                             orderDate: orderData.date,
                             status: orderData.status,
                             items: myItems,
@@ -266,6 +268,8 @@ export const getSellerOrders = async (sellerId: string) => {
                     orderId: orderData.id,
                     customerId: orderData.buyerId,
                     shippingAddress: orderData.shippingAddress,
+                    customerName: orderData.customerName,
+                    customerEmail: orderData.customerEmail,
                     orderDate: orderData.date,
                     status: orderData.status,
                     items: orderData.items,
@@ -291,7 +295,19 @@ export const getSellerOrders = async (sellerId: string) => {
  * Fetches all users from Firestore (Admin use).
  */
 export const getAllUsers = async () => {
-    if (!isFirebaseConfigured) return [];
+    if (!isFirebaseConfigured) {
+        try {
+            const storedDb = localStorage.getItem('axora_users_db');
+            if (storedDb) {
+                const mockDb = JSON.parse(storedDb);
+                return Object.values(mockDb) as User[];
+            }
+            return [];
+        } catch (e) {
+            console.error("Simulation error fetching all users:", e);
+            return [];
+        }
+    }
     try {
         const usersRef = collection(db, "users");
         const snapshot = await getDocs(usersRef);
@@ -367,21 +383,52 @@ export const updateOrderStatus = async (customerId: string, orderId: string, new
  * Fetches all orders from the platform (Admin use).
  */
 export const getAllOrders = async (): Promise<Order[]> => {
-    if (!isFirebaseConfigured) {
+    let ordersList: any[] = [];
+    const seenIds = new Set<string>();
+
+    const safeAdd = (o: any) => {
+        const oid = o.id || o.orderId;
+        if (oid && !seenIds.has(oid)) {
+            seenIds.add(oid);
+            ordersList.push(o);
+        }
+    };
+
+    // Source 1: Firestore Orders Collection
+    if (isFirebaseConfigured) {
         try {
-            const storedOrders = localStorage.getItem('axora_sim_orders');
-            return storedOrders ? JSON.parse(storedOrders) : [];
-        } catch (e) {
-            console.error("Simulation error fetching all orders:", e);
-            return [];
+            const ordersRef = collection(db, "orders");
+            const snapshot = await getDocs(ordersRef);
+            snapshot.docs.forEach(doc => safeAdd({ ...doc.data(), id: doc.id }));
+            console.log(`AXORA SYNC: Found ${ordersList.length} global Firestore orders.`);
+        } catch (error) {
+            console.warn("AXORA SYNC: Global orders collection unreachable:", error);
         }
     }
+
+    // Source 2: Simulation Mode (axora_sim_orders)
     try {
-        const ordersRef = collection(db, "orders");
-        const snapshot = await getDocs(ordersRef);
-        return snapshot.docs.map(doc => doc.data() as Order);
-    } catch (error) {
-        console.error("Error fetching all orders:", error);
-        return [];
+        const storedOrders = localStorage.getItem('axora_sim_orders');
+        if (storedOrders) {
+            const simOrders = JSON.parse(storedOrders);
+            simOrders.forEach(safeAdd);
+            console.log(`AXORA SYNC: Total after crossing with simulation storage: ${ordersList.length}`);
+        }
+    } catch (e) { console.error("AXORA SYNC: Sim_orders parse error:", e); }
+
+    // Source 3: Cross-User Profile Scan (The 'Deep Scan')
+    // This handles orders stored ONLY in buyer profiles
+    try {
+        const allUsers = await getAllUsers();
+        allUsers.forEach((u: any) => {
+            if (u.orderHistory && Array.isArray(u.orderHistory)) {
+                u.orderHistory.forEach(safeAdd);
+            }
+        });
+        console.log(`AXORA SYNC: Final order count after deep scan of all user profiles: ${ordersList.length}`);
+    } catch (err) {
+        console.warn("AXORA SYNC: Cross-user scan failed:", err);
     }
+
+    return ordersList as Order[];
 };

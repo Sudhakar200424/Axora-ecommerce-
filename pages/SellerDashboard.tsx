@@ -37,7 +37,7 @@ const SellerDashboard: React.FC = () => {
   const [codAvailable, setCodAvailable] = useState(true);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [sellerOrders, setSellerOrders] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'orders' | 'add-product'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'products' | 'orders' | 'add-product'>('orders');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
@@ -78,7 +78,7 @@ const SellerDashboard: React.FC = () => {
 
   if (!user || user.role !== 'seller') {
     return (
-      <div className="p-20 text-center font-serif text-charcoal h-screen bg-offwhite">
+      <div className="p-20 text-center font-serif text-charcoal dark:text-offwhite h-screen bg-offwhite dark:bg-charcoal">
         Access Denied. Only registered Sellers can view this atelier.
       </div>
     );
@@ -577,7 +577,7 @@ const SellerDashboard: React.FC = () => {
                         type="number"
                         value={returnPeriod}
                         onChange={e => setReturnPeriod(e.target.value)}
-                        className="w-20 bg-transparent border-b border-neutral-300 focus:border-gold outline-none text-xs uppercase tracking-widest dark:text-offwhite pl-2"
+                        className="w-20 bg-transparent border-b border-neutral-300 dark:border-neutral-700 focus:border-gold outline-none text-xs uppercase tracking-widest dark:text-offwhite pl-2"
                         placeholder="7"
                         min="0"
                       />
@@ -616,35 +616,23 @@ const SellerDashboard: React.FC = () => {
         {/* Tab Navigation - Scrollable on Mobile */}
         <div className="flex overflow-x-auto gap-4 mb-8 border-b border-neutral-200 pb-4 no-scrollbar">
           <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`whitespace-nowrap text-xs md:text-sm uppercase tracking-widest pb-2 transition-colors ${activeTab === 'dashboard' ? 'text-gold border-b-2 border-gold' : 'text-neutral-400 hover:text-charcoal'}`}
-          >
-            Overview
-          </button>
-          <button
             onClick={() => setActiveTab('orders')}
-            className={`whitespace-nowrap text-xs md:text-sm uppercase tracking-widest pb-2 transition-colors ${activeTab === 'orders' ? 'text-gold border-b-2 border-gold' : 'text-neutral-400 hover:text-charcoal'}`}
+            className={`whitespace-nowrap text-xs md:text-sm uppercase tracking-widest pb-2 transition-colors ${activeTab === 'orders' ? 'text-gold border-b-2 border-gold' : 'text-neutral-400 hover:text-charcoal dark:hover:text-offwhite'}`}
           >
             Client Orders
             {sellerOrders.some(o => o.status === 'Processing') && <span className="ml-2 w-2 h-2 bg-red-500 rounded-full inline-block"></span>}
           </button>
           <button
             onClick={() => setActiveTab('products')}
-            className={`whitespace-nowrap text-xs md:text-sm uppercase tracking-widest pb-2 transition-colors ${activeTab === 'products' ? 'text-gold border-b-2 border-gold' : 'text-neutral-400 hover:text-charcoal'}`}
+            className={`whitespace-nowrap text-xs md:text-sm uppercase tracking-widest pb-2 transition-colors ${activeTab === 'products' ? 'text-gold border-b-2 border-gold' : 'text-neutral-400 hover:text-charcoal dark:hover:text-offwhite'}`}
           >
             My Inventory
           </button>
         </div>
 
         {/* Content Area */}
-        <div className="bg-white rounded overflow-hidden shadow-sm border border-neutral-200 min-h-[400px]">
+        <div className="bg-white dark:bg-clay rounded overflow-hidden shadow-sm border border-neutral-200 dark:border-neutral-800 min-h-[400px]">
 
-          {/* DASHBOARD OVERVIEW */}
-          {activeTab === 'dashboard' && (
-            <div className="p-8 flex flex-col items-center justify-center text-center h-full text-neutral-400">
-              <p className="mb-4">Select a tab to manage your boutique.</p>
-            </div>
-          )}
 
           {/* ADD PRODUCT FORM (If accessed directly via tab, though button controls overlay usually) */}
           {activeTab === 'add-product' && (
@@ -656,22 +644,22 @@ const SellerDashboard: React.FC = () => {
           {/* MY PRODUCTS LIST */}
           {activeTab === 'products' && (
             <div className="p-4 md:p-8">
-              <h2 className="text-xl font-serif text-charcoal mb-6">Inventory Management</h2>
+              <h2 className="text-xl font-serif text-charcoal dark:text-offwhite mb-6">Inventory Management</h2>
 
               {/* Mobile Cards for Products */}
               <div className="md:hidden space-y-4">
                 {myProducts.map((p) => (
-                  <div key={p.id} className="border border-neutral-100 p-4 rounded bg-neutral-50 shadow-sm flex gap-4 items-start">
+                  <div key={p.id} className="border border-neutral-100 dark:border-neutral-800 p-4 rounded bg-neutral-50 dark:bg-neutral-800/50 shadow-sm flex gap-4 items-start">
                     <img src={p.images[0]} className="w-20 h-20 object-cover rounded bg-white shadow-sm" />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-1">
-                        <h3 className="font-bold text-charcoal text-xs truncate pr-2">{p.name}</h3>
+                        <h3 className="font-bold text-charcoal dark:text-offwhite text-xs truncate pr-2">{p.name}</h3>
                         <span className="text-gold font-sans font-bold text-sm">₹{p.price.toLocaleString()}</span>
                       </div>
                       <p className="text-[10px] text-neutral-500 mb-2 uppercase tracking-wide">{p.category}</p>
                       <div className="flex justify-between items-center mt-2">
-                        <span className="bg-green-100 text-green-800 text-[9px] px-2 py-0.5 rounded uppercase tracking-widest font-bold">Active</span>
-                        <button onClick={() => handleDeleteProduct(p.id)} className="text-red-500 text-[9px] uppercase tracking-widest font-bold border border-red-200 px-3 py-1.5 rounded hover:bg-red-50">Delete</button>
+                        <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-[9px] px-2 py-0.5 rounded uppercase tracking-widest font-bold">Active</span>
+                        <button onClick={() => handleDeleteProduct(p.id)} className="text-red-500 text-[9px] uppercase tracking-widest font-bold border border-red-200 dark:border-red-900/50 px-3 py-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20">Delete</button>
                       </div>
                     </div>
                   </div>
@@ -682,7 +670,7 @@ const SellerDashboard: React.FC = () => {
               {/* Desktop Table for Products */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="border-b border-neutral-200">
+                  <thead className="border-b border-neutral-200 dark:border-neutral-700">
                     <tr>
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Item</th>
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Category</th>
@@ -691,16 +679,16 @@ const SellerDashboard: React.FC = () => {
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-100">
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                     {myProducts.map((p) => (
-                      <tr key={p.id} className="hover:bg-neutral-50 transition-colors">
+                      <tr key={p.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors">
                         <td className="py-4 flex items-center gap-3">
                           <img src={p.images[0]} className="w-10 h-10 object-cover rounded" />
                           <span className="font-medium">{p.name}</span>
                         </td>
                         <td className="py-4 text-sm text-neutral-600">{p.category}</td>
-                        <td className="py-4 font-sans font-bold text-charcoal">₹{p.price.toLocaleString()}</td>
-                        <td className="py-4"><span className="bg-green-100 text-green-800 text-[10px] px-2 py-1 rounded uppercase tracking-widest">Active</span></td>
+                        <td className="py-4 font-sans font-bold text-charcoal dark:text-offwhite">₹{p.price.toLocaleString()}</td>
+                        <td className="py-4"><span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400 text-[10px] px-2 py-1 rounded uppercase tracking-widest">Active</span></td>
                         <td className="py-4">
                           <button onClick={() => handleDeleteProduct(p.id)} className="text-red-400 hover:text-red-600 text-[10px] uppercase tracking-widest font-bold">Remove</button>
                         </td>
@@ -715,30 +703,41 @@ const SellerDashboard: React.FC = () => {
           {/* ORDERS LIST */}
           {activeTab === 'orders' && (
             <div className="p-4 md:p-8">
-              <h2 className="text-xl font-serif text-charcoal mb-6">Order Fulfillment</h2>
+              <h2 className="text-xl font-serif text-charcoal dark:text-offwhite mb-6">Order Fulfillment</h2>
 
               {/* Mobile Cards for Orders */}
               <div className="md:hidden space-y-4">
                 {sellerOrders.map((order) => (
-                  <div key={order.orderId} className="border border-neutral-100 p-4 rounded bg-neutral-50 shadow-sm">
+                  <div key={order.orderId} className="border border-neutral-100 dark:border-neutral-800 p-4 rounded bg-neutral-50 dark:bg-neutral-800/50 shadow-sm">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <p className="font-bold text-charcoal text-xs">Order #{order.orderId ? order.orderId.slice(0, 8) : 'N/A'}</p>
+                        <p className="font-bold text-charcoal dark:text-offwhite text-xs">Order #{order.orderId ? order.orderId.slice(0, 8) : 'N/A'}</p>
                         <p className="text-[10px] text-neutral-500">{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</p>
                       </div>
-                      <span className={`px-2 py-0.5 rounded text-[9px] uppercase tracking-widest font-bold ${order.status === 'Processing' ? 'bg-green-100 text-green-800' :
-                        order.status.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-neutral-100 text-neutral-600'
+                      <span className={`px-2 py-0.5 rounded text-[9px] uppercase tracking-widest font-bold ${order.status === 'Processing' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                        order.status.toLowerCase() === 'cancelled' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400' :
+                          'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400'
                         }`}>
                         {order.status}
                       </span>
                     </div>
 
-                    <div className="bg-white rounded p-2 mb-3 border border-neutral-100">
+                    <div className="mb-3 px-1">
+                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Customer</p>
+                      <p className="text-[11px] text-charcoal dark:text-offwhite font-medium">
+                        {order.customerName || (order.shippingAddress ? `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}` : 'Anonymous')}
+                      </p>
+                      <p className="text-[9px] text-neutral-500">{order.shippingAddress?.phone}</p>
+                      <p className="text-[9px] text-neutral-500 mt-1 italic">
+                        {order.shippingAddress?.street}, {order.shippingAddress?.city}, {order.shippingAddress?.state} - {order.shippingAddress?.zipCode}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-neutral-900 rounded p-2 mb-3 border border-neutral-100 dark:border-neutral-800">
                       {order.items.map((item: any, idx: number) => (
                         <div key={idx} className="flex justify-between text-[10px] py-1 border-b border-neutral-50 last:border-0">
-                          <span className="text-charcoal font-medium">{item.name} <span className="text-neutral-400">x{item.quantity}</span></span>
-                          <span className="font-sans font-bold text-charcoal">₹{item.price.toLocaleString()}</span>
+                          <span className="text-charcoal dark:text-offwhite font-medium">{item.name} <span className="text-neutral-400">x{item.quantity}</span></span>
+                          <span className="font-sans font-bold text-charcoal dark:text-offwhite">₹{item.price.toLocaleString()}</span>
                         </div>
                       ))}
                     </div>
@@ -753,7 +752,7 @@ const SellerDashboard: React.FC = () => {
                         <button onClick={() => handleOrderStatusUpdate(order.orderId, order.customerId, 'Shipped')} className="bg-charcoal text-white py-2 rounded text-[9px] uppercase tracking-widest hover:bg-black font-bold text-center">
                           Ship Order
                         </button>
-                        <button onClick={() => handleOrderStatusUpdate(order.orderId, order.customerId, 'Cancelled')} className="bg-white border border-red-200 text-red-500 py-2 rounded text-[9px] uppercase tracking-widest hover:bg-red-50 font-bold text-center">
+                        <button onClick={() => handleOrderStatusUpdate(order.orderId, order.customerId, 'Cancelled')} className="bg-white dark:bg-charcoal border border-red-200 dark:border-red-900/50 text-red-500 py-2 rounded text-[9px] uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-900/20 font-bold text-center">
                           Cancel
                         </button>
                       </div>
@@ -766,35 +765,55 @@ const SellerDashboard: React.FC = () => {
               {/* Desktop Table for Orders */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left">
-                  <thead className="border-b border-neutral-200">
+                  <thead className="border-b border-neutral-200 dark:border-neutral-700">
                     <tr>
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Order ID</th>
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Date</th>
+                      <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Customer</th>
+                      <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Shipping Address</th>
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Items</th>
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Total</th>
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Status</th>
                       <th className="pb-4 text-xs font-bold uppercase tracking-widest text-neutral-400">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-100">
+                  <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800">
                     {sellerOrders.map((order) => (
-                      <tr key={order.orderId} className="hover:bg-neutral-50 transition-colors">
+                      <tr key={order.orderId} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors">
                         <td className="py-4 font-mono text-xs text-neutral-400">{(order.orderId || '').slice(0, 8)}</td>
                         <td className="py-4 text-xs text-neutral-600 font-medium">{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : '-'}</td>
                         <td className="py-4">
+                          <div className="text-[11px] font-bold text-charcoal dark:text-offwhite">
+                            {order.customerName || (order.shippingAddress ? `${order.shippingAddress.firstName} ${order.shippingAddress.lastName}` : 'Anonymous')}
+                          </div>
+                          <div className="text-[10px] text-neutral-500">{order.customerEmail}</div>
+                          <div className="text-[10px] text-neutral-500">{order.shippingAddress?.phone}</div>
+                        </td>
+                        <td className="py-4">
+                          <div className="max-w-[150px] text-[10px] text-neutral-500 leading-relaxed italic">
+                            {order.shippingAddress ? (
+                              <>
+                                {order.shippingAddress.street},<br />
+                                {order.shippingAddress.city}, {order.shippingAddress.state}<br />
+                                {order.shippingAddress.zipCode}
+                              </>
+                            ) : 'No address provided'}
+                          </div>
+                        </td>
+                        <td className="py-4">
                           <div className="space-y-1">
                             {order.items.map((item: any, i: number) => (
-                              <div key={i} className="text-xs text-charcoal">
+                              <div key={i} className="text-xs text-charcoal dark:text-offwhite">
                                 {item.name} <span className="text-neutral-400">x{item.quantity}</span>
                               </div>
                             ))}
                           </div>
                         </td>
-                        <td className="py-4 font-sans font-bold text-charcoal font-bold">₹{(order.totalAmount || 0).toLocaleString()}</td>
+                        <td className="py-4 font-sans font-bold text-charcoal dark:text-offwhite font-bold">₹{(order.totalAmount || 0).toLocaleString()}</td>
                         <td className="py-4">
-                          <span className={`px-2 py-1 rounded text-[10px] uppercase tracking-widest font-bold ${order.status.toLowerCase() === 'processing' ? 'bg-green-100 text-green-800' :
-                            order.status.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' :
-                              'bg-neutral-100 text-neutral-600'
+                          <span className={`px-2 py-1 rounded text-[10px] uppercase tracking-widest font-bold ${order.status.toLowerCase() === 'processing' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400' :
+                            order.status.toLowerCase() === 'cancelled' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400' :
+                              'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
                             }`}>
                             {order.status}
                           </span>
@@ -802,7 +821,7 @@ const SellerDashboard: React.FC = () => {
                         <td className="py-4">
                           {order.status === 'Processing' && (
                             <div className="flex gap-2">
-                              <button onClick={() => handleOrderStatusUpdate(order.orderId, order.customerId, 'Shipped')} className="text-green-600 hover:text-green-800 text-[9px] uppercase tracking-widest font-bold border border-green-200 px-2 py-1 rounded transition-colors">Ship</button>
+                              <button onClick={() => handleOrderStatusUpdate(order.orderId, order.customerId, 'Shipped')} className="text-green-600 dark:text-green-400 hover:text-green-800 text-[9px] uppercase tracking-widest font-bold border border-green-200 dark:border-green-900/50 px-2 py-1 rounded transition-colors">Ship</button>
                               <button onClick={() => handleOrderStatusUpdate(order.orderId, order.customerId, 'Cancelled')} className="text-red-400 hover:text-red-600 text-[9px] uppercase tracking-widest font-bold px-2 py-1">Cancel</button>
                             </div>
                           )}

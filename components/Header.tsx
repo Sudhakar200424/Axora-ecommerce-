@@ -137,7 +137,7 @@ const Header: React.FC = () => {
               <>
                 <button
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="text-xs font-bold uppercase tracking-widest hover:text-gold transition-colors flex items-center gap-2"
+                  className="text-xs font-bold uppercase tracking-widest hover:text-gold dark:hover:text-gold transition-colors flex items-center gap-2"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                   <span className="hidden xl:block">{isAdmin ? 'Admin' : (user?.name || 'Member').split(' ')[0]}</span>
@@ -179,7 +179,7 @@ const Header: React.FC = () => {
                 )}
               </>
             ) : (
-              <button onClick={() => navigate('/auth')} className="text-xs font-bold uppercase tracking-widest hover:text-gold transition-colors flex items-center gap-2">
+              <button onClick={() => navigate('/auth')} className="text-xs font-bold uppercase tracking-widest hover:text-gold dark:hover:text-gold transition-colors flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 <span className="hidden xl:block">Sign In</span>
               </button>
@@ -208,12 +208,12 @@ const Header: React.FC = () => {
 
           {/* Side Drawer */}
           <div
-            className={`fixed top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-charcoal border-r border-gold/10 shadow-2xl z-50 transform transition-transform duration-500 ease-out lg:hidden flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            className={`fixed top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-white dark:bg-charcoal border-r border-gold/10 shadow-2xl z-50 transform transition-transform duration-500 ease-out lg:hidden flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
           >
             <div className="p-6 flex flex-col h-full overflow-y-auto no-scrollbar">
               {/* Drawer Header */}
               <div className="flex items-center justify-between mb-8">
-                <span className="text-xl font-serif font-bold tracking-[0.2em] text-offwhite">AXORA</span>
+                <span className="text-xl font-serif font-bold tracking-[0.2em] text-charcoal dark:text-offwhite">AXORA</span>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="text-gold p-2">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
@@ -227,7 +227,7 @@ const Header: React.FC = () => {
                   <input
                     type="text"
                     placeholder="Search..."
-                    className="w-full h-10 bg-clay/50 border border-gold/20 rounded-none pl-4 pr-10 text-[10px] uppercase tracking-widest focus:outline-none focus:border-gold transition-all text-offwhite placeholder:text-neutral-500"
+                    className="w-full h-10 bg-neutral-50 dark:bg-clay/50 border border-gold/20 rounded-none pl-4 pr-10 text-[10px] uppercase tracking-widest focus:outline-none focus:border-gold transition-all text-charcoal dark:text-offwhite placeholder:text-neutral-500"
                     value={localSearch}
                     onChange={(e) => setLocalSearch(e.target.value)}
                   />
@@ -243,31 +243,31 @@ const Header: React.FC = () => {
               <div className="flex-grow flex flex-col gap-6">
                 {user || isAdmin ? (
                   <div className="flex flex-col gap-6">
-                    <div className="flex items-center gap-3 text-gold border-b border-gold/10 pb-6">
-                      <div className="h-10 w-10 rounded-full bg-gold/10 flex items-center justify-center shrink-0">
-                        <span className="text-sm font-bold">{isAdmin ? 'A' : (user?.name || 'M').charAt(0).toUpperCase()}</span>
+                    <div className="flex items-center gap-3 text-gold border-b border-gold/20 pb-6 mb-6 bg-charcoal -mx-6 px-6 pt-2">
+                      <div className="h-10 w-10 rounded-full bg-gold/20 flex items-center justify-center shrink-0 border border-gold/30">
+                        <span className="text-sm font-bold text-gold">{isAdmin ? 'A' : (user?.name || 'M').charAt(0).toUpperCase()}</span>
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-[10px] font-bold uppercase tracking-widest truncate">{isAdmin ? 'Administrator' : user?.name}</p>
-                        <p className="text-[9px] text-neutral-400 truncate">{user?.email}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest truncate text-offwhite">{isAdmin ? 'Administrator' : user?.name}</p>
+                        <p className="text-[9px] text-neutral-400 truncate">{isAdmin ? 'admin@gmail.com' : user?.email}</p>
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-4">
                       {isAdmin ? (
-                        <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] hover:text-gold transition-colors">Admin Dashboard</Link>
+                        <Link to="/admin" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] text-charcoal dark:text-offwhite hover:text-gold transition-colors">Admin Dashboard</Link>
                       ) : (
                         <>
                           {user?.role !== 'seller' && (
                             <>
-                              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] hover:text-gold transition-colors">Home</Link>
-                              <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] hover:text-gold transition-colors">My Profile</Link>
+                              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] text-charcoal dark:text-offwhite hover:text-gold transition-colors">Home</Link>
+                              <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] text-charcoal dark:text-offwhite hover:text-gold transition-colors">My Profile</Link>
                             </>
                           )}
                           {user?.role === 'seller' ? (
                             <Link to="/seller/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] text-gold">Seller Dashboard</Link>
                           ) : (
-                            <Link to="/orders" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] hover:text-gold transition-colors">My Orders</Link>
+                            <Link to="/orders" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] text-charcoal dark:text-offwhite hover:text-gold transition-colors">My Orders</Link>
                           )}
                         </>
                       )}
@@ -276,7 +276,7 @@ const Header: React.FC = () => {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-6">
-                    <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] hover:text-gold transition-colors">Home</Link>
+                    <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] text-charcoal dark:text-offwhite hover:text-gold transition-colors">Home</Link>
                     <Link to="/auth" onClick={() => setIsMobileMenuOpen(false)} className="text-[11px] uppercase tracking-[0.2em] text-gold flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                       Sign In / Register
@@ -287,7 +287,7 @@ const Header: React.FC = () => {
 
               {/* Mobile Utilities Footer */}
               <div className="pt-8 border-t border-gold/10 shrink-0">
-                <button onClick={toggleTheme} className="flex items-center gap-3 text-neutral-400 hover:text-gold transition-colors w-full">
+                <button onClick={toggleTheme} className="flex items-center gap-3 text-charcoal dark:text-neutral-400 hover:text-gold transition-colors w-full">
                   {theme === 'light' ? (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                   ) : (
